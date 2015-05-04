@@ -38,6 +38,7 @@ static int video_decode_test(char *filename)
 {
    OMX_VIDEO_PARAM_PORTFORMATTYPE format;
    OMX_TIME_CONFIG_CLOCKSTATETYPE cstate;
+   OMX_CONFIG_DISPLAYREGIONTYPE drt;
    COMPONENT_T *video_decode = NULL, *video_scheduler = NULL, *video_render = NULL, *clock = NULL;
    COMPONENT_T *list[5];
    TUNNEL_T tunnel[4];
@@ -74,6 +75,32 @@ static int video_decode_test(char *filename)
    if(status == 0 && ilclient_create_component(client, &video_render, "video_render", ILCLIENT_DISABLE_ALL_PORTS) != 0)
       status = -14;
    list[1] = video_render;
+
+   // This have to be done before video_render first real usage.
+   // Check https://www.raspberrypi.org/forums/viewtopic.php?t=34183&p=334196 thread for more info.
+   // This is possible that this block of code should be placed in another part of code.
+   // TO DO: Set width and height fields with proper values.
+   memset(&drt, 0, sizeof(drt));
+   drt.nVersion.nVersion = OMX_VERSION;
+   drt.nSize = sizeof(drt);
+   drt.nPortIndex = 90;
+   drt.src_rect.x_offset=0;
+   drt.src_rect.y_offset=0;
+   drt.src_rect.width=1280;
+   drt.src_rect.height=244;
+   drt.dest_rect.x_offset=0;
+   drt.dest_rect.y_offset=0;
+   drt.dest_rect.width=1280;
+   drt.dest_rect.height=244;
+   drt.fullscreen = OMX_FALSE;
+   drt.noaspect = OMX_TRUE;
+
+   drt.set = (OMX_DISPLAYSETTYPE)(OMX_DISPLAY_SET_SRC_RECT | OMX_DISPLAY_SET_DEST_RECT | OMX_DISPLAY_SET_FULLSCREEN | OMX_DISPLAY_SET_NOASPECT);
+
+   if(OMX_SetConfig(ILC_GET_HANDLE(video_render), OMX_IndexConfigDisplayRegion, &drt) != OMX_ErrorNone) {
+     printf("Error on setting OMX_CONFIG_DISPLAYREGIONTYPE");
+     return EXIT_FAILURE;
+   }
 
    // create clock
    if(status == 0 && ilclient_create_component(client, &clock, "clock", ILCLIENT_DISABLE_ALL_PORTS) != 0)
